@@ -62,6 +62,7 @@ class Stage_location(Base):
 
 
 def geoCode(place):
+    # simple geo code function using the goog tube
     target_url = f"https://maps.googleapis.com/maps/api/geocode/json?address={place}&key={gkey}"
     geo_data = requests.get(target_url).json()
 
@@ -75,10 +76,10 @@ def geoCode(place):
         pass  # the dutchie to the left hand side
 
     return {"lat": lat, "long": lng}
-# Extract - generic function to read the file and return a list of dictionaries
 
 
 def extract(data_file):
+    # Extract - generic function to read the file and return a list of dictionaries
     data = [{}]
     # read les data
     with open(data_file, 'r') as file:
