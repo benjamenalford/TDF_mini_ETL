@@ -58,7 +58,7 @@ class Stage_location(Base):
     latitude = Column(Float)
     longitude = Column(Float)
 
-# Extract
+# Extract - generic function to read the file and return a list of dictionaries
 
 
 def extract(data_file):
@@ -69,21 +69,24 @@ def extract(data_file):
         for row in reader:
             data.append(dict(row))
     return data
-# Transform and Load
+# Transform and Load - takes the data as a list of dictionaries and loads into the DB in 3NF
 
 
 def transform_and_load(stageData):
     # transform the data to classes
     for stage in stageData:
         try:
+            # yes this check for existence should be a function but whatever.  Query the DB and convert to a bool value, insert if it doesn't exist
             exists = bool(session.query(Stage_location).filter_by(
                 location_name=stage["Origin"]).first())
+            # if it doesn't exist load it
             if not exists:
                 stage_location = Stage_location(
                     location_name=stage["Origin"])
                 session.add(stage_location)
-                session.commit()
+                session.commit()  # if we don't commit the later stages won't find it
 
+            # see above
             exists = bool(session.query(Stage_location).filter_by(
                 location_name=stage["Destination"]).first())
             if not exists:
@@ -92,6 +95,7 @@ def transform_and_load(stageData):
                 session.add(stage_location)
                 session.commit()
 
+            # see above
             exists = bool(session.query(Stage_type).filter_by(
                 stage_type=stage["Type"]).first())
             if not exists:
@@ -100,6 +104,7 @@ def transform_and_load(stageData):
                 session.add(stage_type)
                 session.commit()
 
+            # see above
             exists = bool(session.query(Country).filter_by(
                 country_code=stage["Winner_Country"]).first())
             if not exists:
@@ -108,9 +113,11 @@ def transform_and_load(stageData):
                 session.add(country)
                 session.commit()
 
+            # see above, but special first special case,  there is a on the country column!
             exists = bool(session.query(Racer).filter_by(
                 rider_name=stage["Winner"]).first())
             if not exists:
+                # notice the inline query to search for the value of the FK relationship in another table
                 rider = Racer(
                     rider_name=stage["Winner"],
                     rider_country_id=session.query(Country).filter_by(
@@ -118,6 +125,8 @@ def transform_and_load(stageData):
                 session.add(rider)
                 session.commit()
 
+            # now that all of the dependant ( child ) data is loaded, we can load the top level ( parent ) data
+            # all of the inline queries!
             stage_object = TDF_Stage(
                 stage_sequence=stage["Stage"],
                 date=stage["Date"],
@@ -133,9 +142,9 @@ def transform_and_load(stageData):
             session.add(stage_object)
             session.commit()
         except KeyError:
-            # YOLO
+            # YOLO - Not really needed BUT there was an extra line at the end of the file and I didn't want to delete it
             pass
-    # YOLO
+    # YOLO - returning True for no reason at all .  just here in case I decide to check for this function executing properly
     return True
 
 
@@ -151,5 +160,5 @@ session = Session(bind=engine)
 # buckle up and pull the throttle
 transform_and_load(extract(data_file))
 
-# clean up,
+# clean up, like a boy scout yo
 session.close_all()
