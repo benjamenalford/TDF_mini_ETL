@@ -4,6 +4,8 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Seq
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 import csv
+import requests
+from config import gkey
 
 # constants
 data_file = "./Data/stages_TDF.csv"
@@ -58,6 +60,21 @@ class Stage_location(Base):
     latitude = Column(Float)
     longitude = Column(Float)
 
+
+def geoCode(place):
+    target_url = f"https://maps.googleapis.com/maps/api/geocode/json?address={place}&key={gkey}"
+    geo_data = requests.get(target_url).json()
+
+    # so much YOLO, wind it up like a top till it breaks
+    lat = 0
+    lng = 0
+    try:
+        lat = geo_data["results"][0]["geometry"]["location"]["lat"]
+        lng = geo_data["results"][0]["geometry"]["location"]["lng"]
+    except:
+        pass  # the dutchie to the left hand side
+
+    return {"lat": lat, "long": lng}
 # Extract - generic function to read the file and return a list of dictionaries
 
 
@@ -81,17 +98,30 @@ def transform_and_load(stageData):
                 location_name=stage["Origin"]).first())
             # if it doesn't exist load it
             if not exists:
+                location = {"lat": 0, "long": 0}
+                location = geoCode(stage["Destination"])
+
                 stage_location = Stage_location(
-                    location_name=stage["Origin"])
+                    location_name=stage["Origin"],
+                    latitude=location["lat"],
+                    longitude=location["long"])
+
                 session.add(stage_location)
                 session.commit()  # if we don't commit the later stages won't find it
 
-            # see above
+            # see above , but with Geo Coding
             exists = bool(session.query(Stage_location).filter_by(
                 location_name=stage["Destination"]).first())
             if not exists:
+                # lookup the lat and long of the location for mapping later , seed it with 0 for yolo'ness
+                location = {"lat": 0, "long": 0}
+                location = geoCode(stage["Destination"])
+
                 stage_location = Stage_location(
-                    location_name=stage["Destination"])
+                    location_name=stage["Destination"],
+                    latitude=location["lat"],
+                    longitude=location["long"])
+
                 session.add(stage_location)
                 session.commit()
 
