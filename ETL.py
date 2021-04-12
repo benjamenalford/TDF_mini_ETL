@@ -100,7 +100,7 @@ def transform_and_load(stageData):
             # if it doesn't exist load it
             if not exists:
                 location = {"lat": 0, "long": 0}
-                location = geoCode(stage["Destination"])
+                location = geoCode(stage["Origin"])
 
                 stage_location = Stage_location(
                     location_name=stage["Origin"],
